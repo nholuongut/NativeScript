@@ -16,6 +16,12 @@ jobs:
       - name: 📋 Create dummy file
         run: |
           echo "🤖 Weekly auto PR - $(date)" >> weekly-boost.md
+          echo "\n\n> $(curl -s https://api.quotable.io/random?tags=technology|famous-quotes | jq -r '.content')" >> weekly-boost.md
+
+      - name: 📈 Generate activity badge
+        run: |
+          mkdir -p .github/assets
+          echo "![Weekly Activity](https://img.shields.io/badge/Weekly_Activity-Active-brightgreen?style=for-the-badge)" > .github/assets/weekly-badge.md
 
       - name: 🚀 Create Pull Request
         uses: peter-evans/create-pull-request@v5
@@ -26,5 +32,22 @@ jobs:
           body: |
             This PR was auto-generated to boost activity 🚀
             🗓️ Date: $(date +'%Y-%m-%d')
+            
+            ![GitHub badge](https://img.shields.io/badge/Weekly_Activity-Active-brightgreen?style=for-the-badge)
           branch: weekly-boost-${{ github.run_id }}
           delete-branch: true
+          draft: false
+
+  auto-merge:
+    needs: pr
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: ✨ Auto-merge last created PR
+        uses: ahmadnassri/action-auto-merge@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
