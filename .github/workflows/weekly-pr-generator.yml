@@ -22,9 +22,11 @@ jobs:
 
       - name: ✍️ Create weekly quote markdown
         run: |
-          sudo apt-get update && sudo apt-get install -y jq
+          if ! command -v jq &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
           curl -s https://api.quotable.io/random > quote.json
-          quote=$(cat quote.json | jq -r '.content + " — " + .author')
+          quote=$(jq -r '.content + " — " + .author' quote.json)
           echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
           echo "" >> weekly-boost.md
           echo "$quote" >> weekly-boost.md
