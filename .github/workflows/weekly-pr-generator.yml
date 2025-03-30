@@ -9,6 +9,7 @@ jobs:
   pr:
     runs-on: ubuntu-latest
     outputs:
+      pr-number: ${{ steps.cpr.outputs.pull-request-number }}
       branch-name: ${{ steps.set-branch.outputs.branch }}
 
     steps:
@@ -29,6 +30,7 @@ jobs:
           echo "$quote" >> weekly-boost.md
 
       - name: 🚀 Create PR (auto-commit + PR)
+        id: cpr
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -43,12 +45,10 @@ jobs:
   auto-merge:
     needs: pr
     runs-on: ubuntu-latest
+    if: needs.pr.outputs.pr-number != ''
     steps:
-      - name: ⏳ Wait for PR to be created
-        run: sleep 10
-
       - name: 🔁 Auto merge the PR
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-title: "chore: 🧹 Weekly contribution"
+          pull-request-number: ${{ needs.pr.outputs.pr-number }}
