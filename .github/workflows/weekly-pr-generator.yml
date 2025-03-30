@@ -1,4 +1,4 @@
-name: 🔁 Auto Weekly PR Generator
+name: 🖁 Auto Weekly PR Generator
 
 on:
   schedule:
@@ -13,7 +13,7 @@ jobs:
       branch-name: ${{ steps.set-branch.outputs.branch }}
 
     steps:
-      - name: 📥 Checkout repo
+      - name: 📅 Checkout repo
         uses: actions/checkout@v3
 
       - name: 🔀 Set branch name
@@ -23,8 +23,11 @@ jobs:
       - name: ✍️ Create weekly quote markdown
         run: |
           sudo apt-get update && sudo apt-get install -y jq
-          curl -s --insecure https://api.quotable.io/random > quote.json
-          quote=$(cat quote.json | jq -r '.content + " — " + .author')
+          if curl -s https://api.quotable.io/random -o quote.json; then
+            quote=$(cat quote.json | jq -r '.content + " — " + .author')
+          else
+            quote="Keep pushing, keep building. — GitHub Bot"
+          fi
           echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
           echo "" >> weekly-boost.md
           echo "$quote" >> weekly-boost.md
@@ -46,9 +49,16 @@ jobs:
     needs: pr
     runs-on: ubuntu-latest
     if: needs.pr.outputs.pr-number != ''
+
     steps:
       - name: 🔁 Auto merge the PR
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pull-request-number: ${{ needs.pr.outputs.pr-number }}
+
+# ✨ NOTE:
+# You must enable branch protection on 'main':
+# - Require 1 status check (e.g., "Auto Weekly PR Generator / pr")
+# - Allow auto-merge
+# - Require branches up to date
