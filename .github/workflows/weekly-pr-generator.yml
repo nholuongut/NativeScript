@@ -2,56 +2,52 @@ name: 🔁 Auto Weekly PR Generator
 
 on:
   schedule:
-    - cron: '0 3 * * 1' # Every Monday 3AM UTC
+    - cron: '0 3 * * 1'  # Every Monday at 3 AM UTC
   workflow_dispatch:
 
 jobs:
   pr:
     runs-on: ubuntu-latest
     outputs:
-      pr_number: ${{ steps.cpr.outputs.pull-request-number }}
+      branch-name: ${{ steps.set-branch.outputs.branch }}
+
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 📝 Create weekly quote markdown
+      - name: 🔀 Set branch name
+        id: set-branch
+        run: echo "branch=weekly-boost-${{ github.run_id }}" >> $GITHUB_OUTPUT
+
+      - name: ✍️ Create weekly quote markdown
         run: |
-          sudo apt-get update && sudo apt-get install -y jq
           curl -s https://api.quotable.io/random > quote.json
-          quote=$(jq -r '.content + " — " + .author' quote.json)
+          quote=$(cat quote.json | jq -r '.content + " — " + .author')
           echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
           echo "" >> weekly-boost.md
           echo "$quote" >> weekly-boost.md
 
       - name: 🚀 Create PR (auto-commit + PR)
-        id: cpr
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: 🥵 Weekly contribution"
-          title: "chore: 🥵 Weekly contribution"
+          commit-message: "chore: 🧹 Weekly contribution"
+          title: "chore: 🧹 Weekly contribution"
           body: |
-            This PR was auto-generated to boost activity 🚀
-            🗓️ Date: $(date +'%Y-%m-%d')
-          branch: weekly-boost-${{ github.run_id }}
-          delete-branch: true
+            This PR was auto-generated to boost activity 🚀  
+            🗓️ Date: ${{ github.event.head_commit.timestamp }}
+          branch: ${{ steps.set-branch.outputs.branch }}
+          delete-branch: false
 
   auto-merge:
     needs: pr
     runs-on: ubuntu-latest
-    if: needs.pr.outputs.pr_number != ''
     steps:
-      - name: 📋 Auto-merge the PR
-        uses: actions/github-script@v7
+      - name: ⏳ Wait for PR to be created
+        run: sleep 10
+
+      - name: 🔁 Auto merge the PR
+        uses: "peter-evans/enable-pull-request-automerge@v2"
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const prNumber = Number(process.env.PR_NUMBER);
-            await github.rest.pulls.merge({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-              merge_method: 'squash'
-            });
-        env:
-          PR_NUMBER: ${{ needs.pr.outputs.pr_number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-title: "chore: 🧹 Weekly contribution"
