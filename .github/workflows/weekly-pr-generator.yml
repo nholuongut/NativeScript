@@ -2,7 +2,7 @@ name: 🔁 Auto Weekly PR Generator
 
 on:
   schedule:
-    - cron: '0 3 * * 1'  # Every Monday at 3 AM UTC
+    - cron: '0 3 * * 1'
   workflow_dispatch:
 
 jobs:
@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       pr-number: ${{ steps.create-pr.outputs.pull-request-number }}
+      pr-url: ${{ steps.create-pr.outputs.pull-request-url }}
       branch-name: ${{ steps.set-branch.outputs.branch }}
 
     steps:
@@ -22,19 +23,15 @@ jobs:
 
       - name: ✍️ Create weekly quote markdown
         run: |
-          if ! command -v jq &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y jq
-          fi
-
-          curl --retry 3 --retry-delay 5 --connect-timeout 10 -s https://api.quotable.io/random -o quote.json || echo '{"content":"Stay consistent.","author":"GitHub Actions"}' > quote.json
-
+          sudo apt-get update && sudo apt-get install -y jq
+          curl -s https://api.quotable.io/random -o quote.json || echo '{"content":"Stay consistent.","author":"GitHub Actions"}' > quote.json
           quote=$(jq -r '.content + " — " + .author' quote.json)
 
           echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
           echo "" >> weekly-boost.md
           echo "$quote" >> weekly-boost.md
 
-      - name: 🚀 Create PR (auto-commit + PR)
+      - name: 🚀 Create PR
         id: create-pr
         uses: peter-evans/create-pull-request@v5
         with:
@@ -52,14 +49,14 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.pr.outputs.pr-number != ''
     steps:
-      - name: ⏳ Wait briefly
-        run: sleep 10
-
-      - name: 🔁 Enable auto-merge
+      - name: 🔁 Enable auto-merge for PR
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.request('PUT /repos/${{ github.repository }}/pulls/${{ needs.pr.outputs.pr-number }}/auto-merge', {
+            const prNumber = ${{ needs.pr.outputs.pr-number }};
+            const repo = context.repo;
+
+            await github.request('PUT /repos/' + repo.owner + '/' + repo.repo + '/pulls/' + prNumber + '/auto-merge', {
               merge_method: 'squash'
-            })
+            });
