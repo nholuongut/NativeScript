@@ -2,7 +2,7 @@ name: 🔁 Auto Weekly PR Generator
 
 on:
   schedule:
-    - cron: '0 3 * * 1'  # Every Monday 3AM UTC
+    - cron: '0 3 * * 1'  # Every Monday
   workflow_dispatch:
 
 jobs:
@@ -15,15 +15,16 @@ jobs:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 📝 Create weekly file with quote
+      - name: 📝 Generate Weekly Boost File with Quote
+        id: quote
         run: |
-          curl -s https://api.quotable.io/random > quote.json
-          quote=$(jq -r '.content + " — " + .author' quote.json)
-          echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
+          echo "🤖 Weekly DevOps Quote - $(date)" > weekly-boost.md
           echo "" >> weekly-boost.md
-          echo "$quote" >> weekly-boost.md
+          quote=$(curl -k -s https://api.quotable.io/random | jq -r '.content + " — " + .author')
+          echo "${quote:-Keep pushing code 🚀 — Anonymous}" >> weekly-boost.md
+          echo "::set-output name=quote::$quote"
 
-      - name: 🚀 Create PR
+      - name: 🚀 Create Pull Request
         id: cpr
         uses: peter-evans/create-pull-request@v5
         with:
@@ -42,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.pr.outputs.pr_number != '' }}
     steps:
-      - name: 🤝 Auto-merge the PR
+      - name: ✅ Auto-merge the PR
         uses: ahmadnassri/action-auto-merge@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
