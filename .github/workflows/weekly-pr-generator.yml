@@ -1,53 +1,49 @@
-name: 🖁️ Auto Weekly PR Generator
+name: 🔁 Auto Weekly PR Generator
 
 on:
   schedule:
-    - cron: '0 3 * * 1' # Every Monday 3AM UTC
+    - cron: '0 3 * * 1'  # Every Monday 3AM UTC
   workflow_dispatch:
 
 jobs:
   pr:
     runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.cpr.outputs.pull-request-number }}
 
     steps:
-      - name: 📥 Checkout repository
+      - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 📋 Create dummy file
+      - name: 📝 Create weekly file with quote
         run: |
-          echo "🤖 Weekly auto PR - $(date)" >> weekly-boost.md
-          echo "\n\n> $(curl -s https://api.quotable.io/random?tags=technology|famous-quotes | jq -r '.content')" >> weekly-boost.md
+          curl -s https://api.quotable.io/random > quote.json
+          quote=$(jq -r '.content + " — " + .author' quote.json)
+          echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
+          echo "" >> weekly-boost.md
+          echo "$quote" >> weekly-boost.md
 
-      - name: 📈 Generate activity badge
-        run: |
-          mkdir -p .github/assets
-          echo "![Weekly Activity](https://img.shields.io/badge/Weekly_Activity-Active-brightgreen?style=for-the-badge)" > .github/assets/weekly-badge.md
-
-      - name: 🚀 Create Pull Request
+      - name: 🚀 Create PR
+        id: cpr
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: 🧹 Weekly contribution"
           title: "chore: 🧹 Weekly contribution"
           body: |
-            This PR was auto-generated to boost activity 🚀
-            🗓️ Date: $(date +'%Y-%m-%d')
-            
-            ![GitHub badge](https://img.shields.io/badge/Weekly_Activity-Active-brightgreen?style=for-the-badge)
+            This PR was auto-generated to boost activity 🚀  
+            🧠 Quote of the week:
+            > ${{ steps.quote.outputs.quote }}
           branch: weekly-boost-${{ github.run_id }}
-          delete-branch: true
-          draft: false
+          delete-branch: false
 
   auto-merge:
     needs: pr
-    if: ${{ github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-
+    if: ${{ needs.pr.outputs.pr_number != '' }}
     steps:
-      - name: ✨ Auto-merge last created PR
-        uses: ahmadnassri/action-auto-merge@v2
+      - name: 🤝 Auto-merge the PR
+        uses: ahmadnassri/action-auto-merge@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ needs.pr.outputs.pr_number }}
