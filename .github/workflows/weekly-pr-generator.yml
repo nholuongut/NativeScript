@@ -21,7 +21,8 @@ jobs:
 
       - name: ✍️ Create weekly quote markdown
         run: |
-          curl -s https://api.quotable.io/random > quote.json
+          sudo apt-get update && sudo apt-get install -y jq
+          curl -s --insecure https://api.quotable.io/random > quote.json
           quote=$(cat quote.json | jq -r '.content + " — " + .author')
           echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
           echo "" >> weekly-boost.md
@@ -47,7 +48,7 @@ jobs:
         run: sleep 10
 
       - name: 🔁 Auto merge the PR
-        uses: "peter-evans/enable-pull-request-automerge@v2"
+        uses: peter-evans/enable-pull-request-automerge@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pull-request-title: "chore: 🧹 Weekly contribution"
