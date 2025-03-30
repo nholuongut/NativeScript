@@ -22,15 +22,16 @@ jobs:
 
       - name: ✍️ Create weekly quote markdown
         run: |
-          sudo apt-get update && sudo apt-get install -y jq
-
-          # Fetch quote safely with fallback
-          curl --retry 3 --retry-delay 5 --connect-timeout 10 -s https://api.quotable.io/random -o quote.json
-          if [ ! -s quote.json ]; then
-            echo '{"content": "Keep pushing code.", "author": "GitHub Bot"}' > quote.json
+          # Ensure jq is installed
+          if ! command -v jq &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y jq
           fi
 
+          # Fetch quote with retries and fallback
+          curl --retry 3 --retry-delay 5 --connect-timeout 10 -s https://api.quotable.io/random -o quote.json || echo '{"content":"Stay consistent.","author":"GitHub Actions"}' > quote.json
+
           quote=$(jq -r '.content + " — " + .author' quote.json)
+
           echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
           echo "" >> weekly-boost.md
           echo "$quote" >> weekly-boost.md
@@ -44,7 +45,7 @@ jobs:
           title: "chore: 🧹 Weekly contribution"
           body: |
             This PR was auto-generated to boost activity 🚀  
-            🗓️ Date: ${{ github.event.head_commit.timestamp }}
+            🗓️ Date: ${{ github.event.repository.updated_at }}
           branch: ${{ steps.set-branch.outputs.branch }}
           delete-branch: false
 
@@ -53,10 +54,10 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.pr.outputs.pr-number != ''
     steps:
-      - name: ⏳ Wait a moment
+      - name: ⏳ Wait briefly
         run: sleep 10
 
-      - name: 🔁 Enable auto-merge (squash)
+      - name: 🔁 Enable auto-merge
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
