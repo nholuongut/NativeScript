@@ -22,12 +22,10 @@ jobs:
 
       - name: ✍️ Create weekly quote markdown
         run: |
-          # Ensure jq is installed
           if ! command -v jq &> /dev/null; then
             sudo apt-get update && sudo apt-get install -y jq
           fi
 
-          # Fetch quote with retries and fallback
           curl --retry 3 --retry-delay 5 --connect-timeout 10 -s https://api.quotable.io/random -o quote.json || echo '{"content":"Stay consistent.","author":"GitHub Actions"}' > quote.json
 
           quote=$(jq -r '.content + " — " + .author' quote.json)
