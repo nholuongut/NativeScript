@@ -22,9 +22,14 @@ jobs:
 
       - name: ✍️ Create weekly quote markdown
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-          curl -s https://api.quotable.io/random > quote.json
+          sudo apt-get update && sudo apt-get install -y jq
+
+          # Fetch quote safely with fallback
+          curl --retry 3 --retry-delay 5 --connect-timeout 10 -s https://api.quotable.io/random -o quote.json
+          if [ ! -s quote.json ]; then
+            echo '{"content": "Keep pushing code.", "author": "GitHub Bot"}' > quote.json
+          fi
+
           quote=$(jq -r '.content + " — " + .author' quote.json)
           echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
           echo "" >> weekly-boost.md
@@ -48,10 +53,10 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.pr.outputs.pr-number != ''
     steps:
-      - name: ⏳ Wait for PR to be available
+      - name: ⏳ Wait a moment
         run: sleep 10
 
-      - name: 🔁 Enable auto-merge
+      - name: 🔁 Enable auto-merge (squash)
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
