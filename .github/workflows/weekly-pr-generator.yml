@@ -9,14 +9,15 @@ jobs:
   pr:
     runs-on: ubuntu-latest
     outputs:
-      branch: ${{ steps.set-branch.outputs.branch }}
+      pr_number: ${{ steps.create_pr.outputs.pull-request-number }}
+      branch_name: ${{ steps.set_branch.outputs.branch }}
 
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
       - name: 🔀 Set branch name
-        id: set-branch
+        id: set_branch
         run: echo "branch=weekly-boost-${{ github.run_id }}" >> $GITHUB_OUTPUT
 
       - name: ✍️ Create weekly quote markdown
@@ -29,7 +30,8 @@ jobs:
           echo "" >> weekly-boost.md
           echo "$quote" >> weekly-boost.md
 
-      - name: 🚀 Create PR
+      - name: 🚀 Create PR (auto-commit + PR)
+        id: create_pr
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -38,35 +40,23 @@ jobs:
           body: |
             This PR was auto-generated to boost activity 🚀  
             🗓️ Date: ${{ github.event.repository.updated_at }}
-          branch: ${{ steps.set-branch.outputs.branch }}
+          branch: ${{ steps.set_branch.outputs.branch }}
           delete-branch: false
 
   auto-merge:
     needs: pr
     runs-on: ubuntu-latest
+    if: needs.pr.outputs.pr_number != ''
+    env:
+      PR_NUMBER: ${{ needs.pr.outputs.pr_number }}
     steps:
-      - name: 🔍 Find PR number by branch name
-        id: find-pr
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          result-encoding: string
-          script: |
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: "open",
-              head: `${context.repo.owner}:${needs.pr.outputs.branch}`
-            });
-
-            if (!prs.length) throw new Error("❌ No PR found for branch: " + `${needs.pr.outputs.branch}`);
-            return prs[0].number;
-
       - name: 🔁 Enable auto-merge
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.request('PUT /repos/${{ github.repository }}/pulls/${{ steps.find-pr.outputs.result }}/auto-merge', {
+            const prNumber = process.env.PR_NUMBER;
+            console.log(`🔎 Enabling auto-merge for PR #${prNumber}`);
+            await github.request('PUT /repos/${{ github.repository }}/pulls/' + prNumber + '/auto-merge', {
               merge_method: 'squash'
             });
