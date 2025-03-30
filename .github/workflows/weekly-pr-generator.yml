@@ -9,7 +9,7 @@ jobs:
   pr:
     runs-on: ubuntu-latest
     outputs:
-      pr-number: ${{ steps.cpr.outputs.pull-request-number }}
+      pr-number: ${{ steps.create-pr.outputs.pull-request-number }}
       branch-name: ${{ steps.set-branch.outputs.branch }}
 
     steps:
@@ -22,9 +22,8 @@ jobs:
 
       - name: ✍️ Create weekly quote markdown
         run: |
-          if ! command -v jq &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y jq
-          fi
+          sudo apt-get update
+          sudo apt-get install -y jq
           curl -s https://api.quotable.io/random > quote.json
           quote=$(jq -r '.content + " — " + .author' quote.json)
           echo "🤖 Weekly DevOps Quote - $(date):" > weekly-boost.md
@@ -32,7 +31,7 @@ jobs:
           echo "$quote" >> weekly-boost.md
 
       - name: 🚀 Create PR (auto-commit + PR)
-        id: cpr
+        id: create-pr
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -49,8 +48,14 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.pr.outputs.pr-number != ''
     steps:
-      - name: 🔁 Auto merge the PR
-        uses: peter-evans/enable-pull-request-automerge@v2
+      - name: ⏳ Wait for PR to be available
+        run: sleep 10
+
+      - name: 🔁 Enable auto-merge
+        uses: actions/github-script@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-number: ${{ needs.pr.outputs.pr-number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.request('PUT /repos/${{ github.repository }}/pulls/${{ needs.pr.outputs.pr-number }}/auto-merge', {
+              merge_method: 'squash'
+            })
